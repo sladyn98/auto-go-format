@@ -1,5 +1,5 @@
 # auto-go-format
-This github action automatically formats your golang files in pull requests and pushes them.:rocket:
+This github action automatically formats your golang files in pull requests and pushes them. :rocket:
 
 
 # Installation
