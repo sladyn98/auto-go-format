@@ -64,7 +64,7 @@ git fetch fork $HEAD_BRANCH
 
 branch=$(git branch | grep $HEAD_BRANCH)
 if [ -n "$branch" ]; then
-    git checkout -b $HEAD_BRANCH
+    git checkout $HEAD_BRANCH
 else
     git checkout -b $HEAD_BRANCH
 fi
