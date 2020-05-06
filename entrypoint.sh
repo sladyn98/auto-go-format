@@ -27,7 +27,7 @@ if [[ -z "$BASE_BRANCH" ]]; then
 	exit 1
 fi
 
-USER_LOGIN=$(jq -r ".user.login" "$GITHUB_EVENT_PATH")
+USER_LOGIN=$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")
 
 user_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
             "${URI}/users/${USER_LOGIN}")
