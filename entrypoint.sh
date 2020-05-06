@@ -62,7 +62,7 @@ set -o xtrace
 git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
-if [ $(git branch | grep $HEAD_BRANCH) ]; then
+if [[ $(git branch | grep $HEAD_BRANCH) ]]; then
     git checkout $HEAD_BRANCH
 else
     git checkout -b $HEAD_BRANCH
