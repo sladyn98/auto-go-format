@@ -61,6 +61,7 @@ set -o xtrace
 # make sure branches are up-to-date
 git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
+git checkout -b $HEAD_BRANCH
 
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
 FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
