@@ -1,10 +1,10 @@
-# auto-go-format
+# Auto Go Format
+
 This github action automatically formats your golang files in pull requests and pushes them. :rocket:
 
+## Installation
 
-# Installation
 Create a workflow yaml file (eg: `.github/workflows/go-format.yml` see [Creating a Workflow file](https://help.github.com/en/articles/configuring-a-workflow#creating-a-workflow-file)):
-
 
 ```yml
 name: Golang Formatter
@@ -18,8 +18,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Golang Formatter
-      uses: sladyn98/auto-go-format@master
+      uses: dingdayu/auto-go-format@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
 ```
