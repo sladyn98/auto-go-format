@@ -71,7 +71,7 @@ declare -i ZERO=0
 for FILE in $FILES; do
 if [ "${FILE##*.}" = "go" ]; then
 count=$((count+1))
-go fmt -w "${FILE}"
+go fmt "${FILE}"
 fi
 done
 
