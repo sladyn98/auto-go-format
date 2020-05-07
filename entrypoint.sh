@@ -74,10 +74,10 @@ declare -i count=0
 declare -i ZERO=0
 
 for FILE in $FILES; do
-if [ "${FILE##*.}" = "go" ]; then
-count=$((count+1))
-go fmt "${FILE}"
-fi
+    if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
+        count=$((count+1))
+        go fmt "${FILE}"
+    fi
 done
 
 if [[ $count -eq $ZERO ]]; then
