@@ -84,8 +84,8 @@ if [[ $count -eq $ZERO ]]; then
     COMMENT="You do not have any go files to format"
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+    if [[ "COMMENTS_URL" != null ]]; then
+    	curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
     exit $SUCCESS
 fi
@@ -99,14 +99,14 @@ if [[ `git status --porcelain` ]]; then
     COMMENT=":rocket: Your go files have been formatted successfully"
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
+    if [[ "COMMENTS_URL" != null ]]; then
     	curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
 else
     COMMENT=":heavy_check_mark: That is a perfectly formatted change."
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
+    if [[ "COMMENTS_URL" != null ]]; then
     	echo "Not file need format"
     	# Pause invalid tips
     	# curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
