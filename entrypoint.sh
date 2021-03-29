@@ -26,7 +26,7 @@ if [[ -z "$BASE_BRANCH" ]]; then
 	exit 1
 fi
 
-USER_LOGIN=$(jq -r ".comment.user.login" "$GITHUB_EVENT_PATH")
+USER_LOGIN=$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")
 
 user_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
             "${URI}/users/${USER_LOGIN}")
@@ -62,24 +62,32 @@ set -o xtrace
 git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
+if [[ $(git branch | grep $HEAD_BRANCH) ]]; then
+    git checkout $HEAD_BRANCH
+else
+    git checkout -b $HEAD_BRANCH
+fi
+
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
 FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
 declare -i count=0
 declare -i ZERO=0
 
 for FILE in $FILES; do
-if [ "${FILE##*.}" = "go" ]; then
-count=$((count+1))
-gofmt -w "${FILE}"
-fi
+    if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
+        count=$((count+1))
+        go fmt "${FILE}"
+    fi
 done
 
 if [[ $count -eq $ZERO ]]; then
     COMMENT="You do not have any go files to format"
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+    if [[ "COMMENTS_URL" != null ]]; then
+        echo "Not file need format"
+    	# Pause invalid tips
+    	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
     exit $SUCCESS
 fi
@@ -93,15 +101,17 @@ if [[ `git status --porcelain` ]]; then
     COMMENT=":rocket: Your go files have been formatted successfully"
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+    if [[ "COMMENTS_URL" != null ]]; then
+    	curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
 else
     COMMENT=":heavy_check_mark: That is a perfectly formatted change."
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+    if [[ "COMMENTS_URL" != null ]]; then
+    	echo "Not file need format"
+    	# Pause invalid tips
+    	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
 fi
 exit $SUCCESS
