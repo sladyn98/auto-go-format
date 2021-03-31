@@ -2,6 +2,14 @@
 
 set -e
 
+# SELF represents the user visible name of the action.
+SELF="auto-go-format"
+
+# log outputs its arguments to the action run log.
+log() {
+	echo "::set-output name=${SELF}::$*"
+}
+
 # err outputs an error message to the action run log.
 err() {
 	echo "::warning::$*"
@@ -56,7 +64,7 @@ fi
 HEAD_REPO=$(echo "$pr_resp" | jq -r .head.repo.full_name)
 HEAD_BRANCH=$(echo "$pr_resp" | jq -r .head.ref)
 
-echo "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
+log "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
 
 USER_TOKEN=${USER_LOGIN}_TOKEN
 COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
@@ -95,7 +103,7 @@ if [[ $count -eq $ZERO ]]; then
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
     if [[ "COMMENTS_URL" != null ]]; then
-        echo "Not file need format"
+        log "Not file need format"
     	# Pause invalid tips
     	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
@@ -119,7 +127,7 @@ else
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
     if [[ "COMMENTS_URL" != null ]]; then
-    	echo "Not file need format"
+    	log "Not file need format"
     	# Pause invalid tips
     	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
