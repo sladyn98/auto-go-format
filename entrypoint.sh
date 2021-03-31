@@ -7,7 +7,7 @@ SELF="auto-go-format"
 
 # log outputs its arguments to the action run log.
 log() {
-	echo "${SELF}: $*"
+	echo "::set-output name=${SELF}::$*"
 }
 
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
