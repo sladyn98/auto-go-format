@@ -2,6 +2,16 @@
 
 set -e
 
+# err outputs an error message to the action run log.
+err() {
+	echo "::warning::$*"
+}
+
+# die outputs a fatal error message to the action run log.
+die() {
+	echo "::error::$*"
+}
+
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
 
