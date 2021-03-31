@@ -1,0 +1,43 @@
+---
+
+# This file defines automation actions
+name: Auto
+
+# Automate on all issue events
+on:
+  issues:
+    types:
+      - opened
+
+# Define a job for each automatic task
+jobs:
+
+  # This job creates a branch for each issue and comments checkout command
+  branch:
+    runs-on: ubuntu-latest
+    steps:
+
+      # Set environment variables to allow configuration
+      - name: Set env
+        run: |
+          echo "GITHUB_NEW_BRANCH=$(echo '${{ github.event.issue.number }} ${{ github.event.issue.title }}' | tr -Cs '[:alnum:]\n' '-' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # Create new branch and push to remote
+      - uses: actions/checkout@v2
+        with:
+          ref: main
+      - name: Auto branch
+        run: |
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git checkout -b "${{ env.GITHUB_NEW_BRANCH }}"
+          git push -u origin "${{ env.GITHUB_NEW_BRANCH }}"
+
+      # Add checkout comment to issue
+      - name: Add issue comment
+        uses: KeisukeYamashita/create-comment@v1
+        with:
+          comment: |
+            ```sh
+            git fetch && git checkout "${{ env.GITHUB_NEW_BRANCH }}"
+            ```
+            ([Go to branch](https://github.com/${{ github.repository }}/tree/${{ env.GITHUB_NEW_BRANCH }}))
