@@ -1,0 +1,87 @@
+---
+
+name: Lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Lint the README
+      - name: Lint README
+        uses: nosborn/github-action-markdown-cli@v1.1.1
+        with:
+          files: README.md
+
+      # Lint issue templates
+      - uses: actions/checkout@v1
+      - name: Lint ISSUE_TEMPLATES
+        uses: nosborn/github-action-markdown-cli@v1.1.1
+        with:
+          files: .github/ISSUE_TEMPLATE/*.md
+
+      # Lint pull request templates
+      - uses: actions/checkout@v1
+      - name: Lint PULL_TEMPLATES
+        uses: nosborn/github-action-markdown-cli@v1.1.1
+        with:
+          files: .github/PULL_REQUEST_TEMPLATE.md
+
+  editorconfig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Check all files against the .editorconfig
+      - name: Check editorconfig
+        uses: editorconfig-checker/action-editorconfig-checker@v1.0.0
+
+  yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Lint all .yml files
+      - name: yaml lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          strict: true
+          format: parsable
+          config_data: |
+            extends: default
+            ignore:
+              test/**/*.yml
+            rules:
+              line-length: disable
+              truthy:
+                check-keys: false
+                allowed-values:
+                  - "true"
+                  - "false"
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # Lint all shellscripts
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: error
