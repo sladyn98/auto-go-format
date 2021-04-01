@@ -31,6 +31,13 @@ fmt() {
 	echo "::endgroup::"
 }
 
+# get retrieves a value from the configured API from the
+# resource path $1.
+get() {
+	echo "set-output name=api::$1"
+	curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/$1"
+}
+
 # parse_user parses the user name from $1 as the user
 # data API response.
 parse_user() {
@@ -78,23 +85,23 @@ URI="https://api.github.com"
 API_HEADER="Accept: application/vnd.github.v3+json"
 AUTH_HEADER="Authorization: token $GITHUB_TOKEN"
 
-pr_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
+PULL_DATA="$(get "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
 
-BASE_REPO="$(echo "$pr_resp" | jq -r .base.repo.full_name)"
-BASE_BRANCH="$(echo "$pr_resp" | jq -r .base.ref)"
+BASE_REPO="$(echo "$PULL_DATA" | jq -r .base.repo.full_name)"
+BASE_BRANCH="$(echo "$PULL_DATA" | jq -r .base.ref)"
 
 if [[ -z "$BASE_BRANCH" ]]; then
 	echo "Cannot get base branch information for PR #$PR_NUMBER!"
-	echo "API response: $pr_resp"
+	echo "API response: $PULL_DATA"
 	exit 1
 fi
 
 USER_LOGIN="$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")"
 
-user_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/users/${USER_LOGIN}")"
+USER_DATA="$(get "/users/${USER_LOGIN}")"
 
-HEAD_REPO="$(echo "$pr_resp" | jq -r .head.repo.full_name)"
-HEAD_BRANCH="$(echo "$pr_resp" | jq -r .head.ref)"
+HEAD_REPO="$(echo "$PULL_DATA" | jq -r .head.repo.full_name)"
+HEAD_BRANCH="$(echo "$PULL_DATA" | jq -r .head.ref)"
 
 log "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
 
@@ -103,7 +110,7 @@ COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
 
 git remote set-url origin https://x-access-token:$COMMITTER_TOKEN@github.com/$GITHUB_REPOSITORY.git
 
-config name  "$(parse_user  "$user_resp")"
+config name  "$(parse_user  "$USER_DATA")"
 config email "$(parse_email "$user_resp")"
 
 git remote add fork https://x-access-token:$COMMITTER_TOKEN@github.com/$HEAD_REPO.git
