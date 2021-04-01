@@ -2,57 +2,128 @@
 
 set -e
 
-PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
+# SELF represents the user visible name of the action.
+SELF="auto-go-format"
+
+# GOFMT represents the command to run to format files. The
+# given file is substituted for the literal "{FILE}".
+GOFMT="go fmt {FILE}"
+
+# log outputs its arguments to the action run log.
+log() {
+	echo "::set-output name=${SELF}::$*"
+}
+
+# err outputs an error message to the action run log.
+err() {
+	echo "::warning::$*"
+}
+
+# die outputs a fatal error message to the action run log.
+die() {
+	echo "::error::$*"
+}
+
+# fmt recieves a file as $1 and formats it in place.
+fmt() {
+	echo "::group::formatting '$1'"
+	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
+	echo "::endgroup::"
+}
+
+# get retrieves a value from the configured API from the
+# resource path $1.
+get() {
+	echo "set-output name=api::$1"
+	curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/$1"
+}
+
+# parse_user parses the user name from $1 as the user
+# data API response.
+parse_user() {
+	USER_NAME="$(echo "$1" | jq -r ".name")"
+	
+	# TODO: if USER_NAME is null something has
+	# already gone wrong.
+	if [[ "$USER_NAME" == "null" ]]; then
+		USER_NAME=$USER_LOGIN
+	fi
+
+	echo "${USER_NAME} (Rebase PR Action)"
+}
+
+# parse_email parses the user email from $1 as the user
+# data API response.
+parse_email() {
+	USER_EMAIL="$(echo "$1" | jq -r ".email")"
+
+	# TODO: if USER_EMAIL is null something has
+	# already gone wrong.
+	if [[ "$USER_EMAIL" == "null" ]]; then
+		USER_EMAIL="$USER_LOGIN@users.noreply.github.com"
+	fi
+
+	echo "$USER_EMAIL"
+}
+
+# comment writes $1 as a comment to the current pull request.
+comment() {
+	PAYLOAD="$(echo '{}' | jq --arg body "$1" '.body = $body')"
+	COMMENTS_URL="$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)"
+
+	if [[ "COMMENTS_URL" != null ]]; then
+		curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+	else
+		err "Couldn't comment: $1"
+	fi
+}
+
+# config recieves a key as $1 and a value as $2 to set
+# the git configuration.
+config() {
+	echo "::set-output name=config::Setting '$1'"
+	git config --global "user.$1" "$2"
+}
 
 if [[ -z "$GITHUB_TOKEN" ]]; then
-	echo "Set the GITHUB_TOKEN env variable."
-	exit 1
+	die "Set the GITHUB_TOKEN env variable."
 fi
 
-URI=https://api.github.com
+PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+
+log "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
+
+URI="https://api.github.com"
 API_HEADER="Accept: application/vnd.github.v3+json"
 AUTH_HEADER="Authorization: token $GITHUB_TOKEN"
 
-pr_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
-          "${URI}/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+PULL_DATA="$(get "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
 
-BASE_REPO=$(echo "$pr_resp" | jq -r .base.repo.full_name)
-BASE_BRANCH=$(echo "$pr_resp" | jq -r .base.ref)
+BASE_REPO="$(echo "$PULL_DATA" | jq -r .base.repo.full_name)"
+BASE_BRANCH="$(echo "$PULL_DATA" | jq -r .base.ref)"
 
 if [[ -z "$BASE_BRANCH" ]]; then
 	echo "Cannot get base branch information for PR #$PR_NUMBER!"
-	echo "API response: $pr_resp"
+	echo "API response: $PULL_DATA"
 	exit 1
 fi
 
-USER_LOGIN=$(jq -r ".comment.user.login" "$GITHUB_EVENT_PATH")
+USER_LOGIN="$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")"
 
-user_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
-            "${URI}/users/${USER_LOGIN}")
+USER_DATA="$(get "/users/${USER_LOGIN}")"
 
-USER_NAME=$(echo "$user_resp" | jq -r ".name")
-if [[ "$USER_NAME" == "null" ]]; then
-	USER_NAME=$USER_LOGIN
-fi
-USER_NAME="${USER_NAME} (Rebase PR Action)"
+HEAD_REPO="$(echo "$PULL_DATA" | jq -r .head.repo.full_name)"
+HEAD_BRANCH="$(echo "$PULL_DATA" | jq -r .head.ref)"
 
-USER_EMAIL=$(echo "$user_resp" | jq -r ".email")
-if [[ "$USER_EMAIL" == "null" ]]; then
-	USER_EMAIL="$USER_LOGIN@users.noreply.github.com"
-fi
-
-
-HEAD_REPO=$(echo "$pr_resp" | jq -r .head.repo.full_name)
-HEAD_BRANCH=$(echo "$pr_resp" | jq -r .head.ref)
-
-echo "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
+log "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
 
 USER_TOKEN=${USER_LOGIN}_TOKEN
 COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
+
 git remote set-url origin https://x-access-token:$COMMITTER_TOKEN@github.com/$GITHUB_REPOSITORY.git
-git config --global user.email "$USER_EMAIL"
-git config --global user.name "$USER_NAME"
+
+config name  "$(parse_user  "$USER_DATA")"
+config email "$(parse_email "$user_resp")"
 
 git remote add fork https://x-access-token:$COMMITTER_TOKEN@github.com/$HEAD_REPO.git
 
@@ -62,46 +133,39 @@ set -o xtrace
 git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
+if [[ $(git branch | grep $HEAD_BRANCH) ]]; then
+    git checkout $HEAD_BRANCH
+else
+    git checkout -b $HEAD_BRANCH
+fi
+
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
 FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
 declare -i count=0
 declare -i ZERO=0
 
 for FILE in $FILES; do
-if [ "${FILE##*.}" = "go" ]; then
-count=$((count+1))
-gofmt -w "${FILE}"
-fi
+    if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
+        count=$((count+1))
+        fmt "${FILE}"
+    fi
 done
 
 if [[ $count -eq $ZERO ]]; then
-    COMMENT="You do not have any go files to format"
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
-    exit $SUCCESS
+	err "You do not have any go files to format"
+	exit $SUCCESS
 fi
 
 # Post results back as comment.
 if [[ `git status --porcelain` ]]; then
-    git status
-    git add .
-    git commit -m "Formatting files"
-    git push -f fork $HEAD_BRANCH
-    COMMENT=":rocket: Your go files have been formatted successfully"
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
+	git status
+	git add .
+	git commit -m "Formatting files"
+	git push -f fork $HEAD_BRANCH
+
+	comment ":rocket: Your go files have been formatted successfully"
 else
-    COMMENT=":heavy_check_mark: That is a perfectly formatted change."
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
+	comment ":heavy_check_mark: That is a perfectly formatted change."
 fi
+
 exit $SUCCESS

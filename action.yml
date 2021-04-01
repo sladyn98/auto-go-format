@@ -1,6 +1,8 @@
+---
+
 name: "Go Formatter"
 description: "Automatically formats golang files in pull requests"
-author: "sladyn98"
+author: "yuri-norwood"
 
 runs:
   using: "docker"
