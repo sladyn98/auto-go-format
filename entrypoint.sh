@@ -85,6 +85,15 @@ config() {
 	git config --global "user.$1" "$2"
 }
 
+# checkout changes to (or creates) the branch given as $1.
+checkout()  {
+	if [[ "$(git branch | grep "$1")" ]]; then
+		git checkout "$1"
+	else
+		git checkout -b "$1"
+	fi
+}
+
 if [[ -z "$GITHUB_TOKEN" ]]; then
 	die "Set the GITHUB_TOKEN env variable."
 fi
@@ -133,11 +142,7 @@ set -o xtrace
 git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
-if [[ $(git branch | grep $HEAD_BRANCH) ]]; then
-	git checkout $HEAD_BRANCH
-else
-	git checkout -b $HEAD_BRANCH
-fi
+checkout "$HEAD_BRANCH"
 
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
 FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
