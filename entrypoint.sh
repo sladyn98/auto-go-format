@@ -2,13 +2,12 @@
 
 set -e
 
+if [[ -z "$GITHUB_TOKEN" ]]; then
+	die "Set the GITHUB_TOKEN env variable."
+fi
+
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
-
-if [[ -z "$GITHUB_TOKEN" ]]; then
-	echo "Set the GITHUB_TOKEN env variable."
-	exit 1
-fi
 
 URI=https://api.github.com
 API_HEADER="Accept: application/vnd.github.v3+json"
