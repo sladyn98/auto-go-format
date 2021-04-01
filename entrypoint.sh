@@ -2,6 +2,17 @@
 
 set -e
 
+# GOFMT represents the command to run to format files. The
+# given file is substituted for the literal "{FILE}".
+GOFMT="go fmt {FILE}"
+
+# fmt recieves a file as $1 and formates it in place.
+fmt() {
+	echo "::group::formatting '$1'"
+	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
+	echo "::endgroup::"
+}
+
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
 
@@ -76,7 +87,7 @@ declare -i ZERO=0
 for FILE in $FILES; do
     if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
         count=$((count+1))
-        go fmt "${FILE}"
+        fmt "${FILE}"
     fi
 done
 
