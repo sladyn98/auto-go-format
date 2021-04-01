@@ -24,11 +24,17 @@ die() {
 	echo "::error::$*"
 }
 
-# fmt recieves a file as $1 and formates it in place.
+# fmt recieves a file as $1 and formats it in place.
 fmt() {
 	echo "::group::formatting '$1'"
 	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
 	echo "::endgroup::"
+}
+
+# config recieves a key as $1 and a value as $2 to set
+# the git configuration.
+config() {
+	git config --global "user.$1" "$2"
 }
 
 if [[ -z "$GITHUB_TOKEN" ]]; then
@@ -81,8 +87,8 @@ USER_TOKEN=${USER_LOGIN}_TOKEN
 COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
 
 git remote set-url origin https://x-access-token:$COMMITTER_TOKEN@github.com/$GITHUB_REPOSITORY.git
-git config --global user.email "$USER_EMAIL"
-git config --global user.name "$USER_NAME"
+config email "$USER_EMAIL"
+config name "$USER_NAME"
 
 git remote add fork https://x-access-token:$COMMITTER_TOKEN@github.com/$HEAD_REPO.git
 
