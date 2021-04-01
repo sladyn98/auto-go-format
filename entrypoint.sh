@@ -34,6 +34,7 @@ fmt() {
 # config recieves a key as $1 and a value as $2 to set
 # the git configuration.
 config() {
+	echo "::set-output name=config::Setting '$1'"
 	git config --global "user.$1" "$2"
 }
 
