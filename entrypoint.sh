@@ -144,8 +144,7 @@ git fetch fork $HEAD_BRANCH
 
 checkout "$HEAD_BRANCH"
 
-URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
-FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
+FILES=$(curl -s -X GET -G "${URI}/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files" | jq -r '.[] | .filename')
 declare -i count=0
 declare -i ZERO=0
 
