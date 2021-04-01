@@ -24,11 +24,46 @@ die() {
 	echo "::error::$*"
 }
 
-# fmt recieves a file as $1 and formates it in place.
+# fmt recieves a file as $1 and formats it in place.
 fmt() {
 	echo "::group::formatting '$1'"
 	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
 	echo "::endgroup::"
+}
+
+# parse_user parses the user name from $1 as the user
+# data API response.
+parse_user() {
+	USER_NAME="$(echo "$1" | jq -r ".name")"
+	
+	# TODO: if USER_NAME is null something has
+	# already gone wrong.
+	if [[ "$USER_NAME" == "null" ]]; then
+		USER_NAME=$USER_LOGIN
+	fi
+
+	echo "${USER_NAME} (Rebase PR Action)"
+}
+
+# parse_email parses the user email from $1 as the user
+# data API response.
+parse_email() {
+	USER_EMAIL="$(echo "$1" | jq -r ".email")"
+
+	# TODO: if USER_EMAIL is null something has
+	# already gone wrong.
+	if [[ "$USER_EMAIL" == "null" ]]; then
+		USER_EMAIL="$USER_LOGIN@users.noreply.github.com"
+	fi
+
+	echo "$USER_EMAIL"
+}
+
+# config recieves a key as $1 and a value as $2 to set
+# the git configuration.
+config() {
+	echo "::set-output name=config::Setting '$1'"
+	git config --global "user.$1" "$2"
 }
 
 if [[ -z "$GITHUB_TOKEN" ]]; then
@@ -56,21 +91,7 @@ fi
 
 USER_LOGIN="$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")"
 
-user_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
-            "${URI}/users/${USER_LOGIN}")
-
-USER_NAME="$(echo "$user_resp" | jq -r ".name")"
-USER_EMAIL="$(echo "$user_resp" | jq -r ".email")"
-
-if [[ "$USER_NAME" == "null" ]]; then
-	USER_NAME=$USER_LOGIN
-fi
-
-USER_NAME="${USER_NAME} (Rebase PR Action)"
-
-if [[ "$USER_EMAIL" == "null" ]]; then
-	USER_EMAIL="$USER_LOGIN@users.noreply.github.com"
-fi
+user_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/users/${USER_LOGIN}")"
 
 HEAD_REPO="$(echo "$pr_resp" | jq -r .head.repo.full_name)"
 HEAD_BRANCH="$(echo "$pr_resp" | jq -r .head.ref)"
@@ -81,8 +102,9 @@ USER_TOKEN=${USER_LOGIN}_TOKEN
 COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
 
 git remote set-url origin https://x-access-token:$COMMITTER_TOKEN@github.com/$GITHUB_REPOSITORY.git
-git config --global user.email "$USER_EMAIL"
-git config --global user.name "$USER_NAME"
+
+config name  "$(parse_user  "$user_resp")"
+config email "$(parse_email "$user_resp")"
 
 git remote add fork https://x-access-token:$COMMITTER_TOKEN@github.com/$HEAD_REPO.git
 
