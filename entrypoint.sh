@@ -23,7 +23,7 @@ err() {
 die() {
 	echo "::error::$*"
 
-	if [ "PULL_DATA" ]
+	if [ "$PULL_DATA" ]
 	then
 		echo "::group::API response"
 		echo "${PULL_DATA}"
