@@ -31,6 +31,13 @@ fmt() {
 	echo "::endgroup::"
 }
 
+# get retrieves a value from the configured API from the
+# resource path $1.
+get() {
+	echo "set-output name=api::$1"
+	curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/$1"
+}
+
 # parse_user parses the user name from $1 as the user
 # data API response.
 parse_user() {
@@ -78,7 +85,7 @@ URI="https://api.github.com"
 API_HEADER="Accept: application/vnd.github.v3+json"
 AUTH_HEADER="Authorization: token $GITHUB_TOKEN"
 
-pr_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
+pr_resp="$(get "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
 
 BASE_REPO="$(echo "$pr_resp" | jq -r .base.repo.full_name)"
 BASE_BRANCH="$(echo "$pr_resp" | jq -r .base.ref)"
@@ -91,7 +98,7 @@ fi
 
 USER_LOGIN="$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")"
 
-user_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/users/${USER_LOGIN}")"
+user_resp="$(get "/users/${USER_LOGIN}")"
 
 HEAD_REPO="$(echo "$pr_resp" | jq -r .head.repo.full_name)"
 HEAD_BRANCH="$(echo "$pr_resp" | jq -r .head.ref)"
