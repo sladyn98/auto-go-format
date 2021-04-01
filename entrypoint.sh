@@ -5,6 +5,10 @@ set -e
 # SELF represents the user visible name of the action.
 SELF="auto-go-format"
 
+# GOFMT represents the command to run to format files. The
+# given file is substituted for the literal "{FILE}".
+GOFMT="go fmt {FILE}"
+
 # log outputs its arguments to the action run log.
 log() {
 	echo "::set-output name=${SELF}::$*"
@@ -18,6 +22,13 @@ err() {
 # die outputs a fatal error message to the action run log.
 die() {
 	echo "::error::$*"
+}
+
+# fmt recieves a file as $1 and formates it in place.
+fmt() {
+	echo "::group::formatting '$1'"
+	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
+	echo "::endgroup::"
 }
 
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
@@ -94,7 +105,7 @@ declare -i ZERO=0
 for FILE in $FILES; do
     if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
         count=$((count+1))
-        go fmt "${FILE}"
+        fmt "${FILE}"
     fi
 done
 
