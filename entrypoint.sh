@@ -139,8 +139,7 @@ else
 	git checkout -b $HEAD_BRANCH
 fi
 
-URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
-FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
+FILES=$(curl -s -X GET -G "${URI}/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files" | jq -r '.[] | .filename')
 declare -i count=0
 declare -i ZERO=0
 
