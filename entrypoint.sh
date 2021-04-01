@@ -36,9 +36,10 @@ if [[ -z "$GITHUB_TOKEN" ]]; then
 fi
 
 PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
 
-URI=https://api.github.com
+log "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
+
+URI="https://api.github.com"
 API_HEADER="Accept: application/vnd.github.v3+json"
 AUTH_HEADER="Authorization: token $GITHUB_TOKEN"
 
