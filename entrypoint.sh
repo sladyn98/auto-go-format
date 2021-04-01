@@ -66,6 +66,18 @@ parse_email() {
 	echo "$USER_EMAIL"
 }
 
+# comment writes $1 as a comment to the current pull request.
+comment() {
+	PAYLOAD="$(echo '{}' | jq --arg body "$1" '.body = $body')"
+	COMMENTS_URL="$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)"
+
+	if [[ "COMMENTS_URL" != null ]]; then
+		curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+	else
+		err "Couldn't comment: $1"
+	fi
+}
+
 # config recieves a key as $1 and a value as $2 to set
 # the git configuration.
 config() {
@@ -140,37 +152,20 @@ for FILE in $FILES; do
 done
 
 if [[ $count -eq $ZERO ]]; then
-    COMMENT="You do not have any go files to format"
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [[ "COMMENTS_URL" != null ]]; then
-        log "Not file need format"
-    	# Pause invalid tips
-    	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
-    exit $SUCCESS
+	err "You do not have any go files to format"
+	exit $SUCCESS
 fi
 
 # Post results back as comment.
 if [[ `git status --porcelain` ]]; then
-    git status
-    git add .
-    git commit -m "Formatting files"
-    git push -f fork $HEAD_BRANCH
-    COMMENT=":rocket: Your go files have been formatted successfully"
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [[ "COMMENTS_URL" != null ]]; then
-    	curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
+	git status
+	git add .
+	git commit -m "Formatting files"
+	git push -f fork $HEAD_BRANCH
+
+	comment ":rocket: Your go files have been formatted successfully"
 else
-    COMMENT=":heavy_check_mark: That is a perfectly formatted change."
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [[ "COMMENTS_URL" != null ]]; then
-    	log "Not file need format"
-    	# Pause invalid tips
-    	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
+	comment ":heavy_check_mark: That is a perfectly formatted change."
 fi
+
 exit $SUCCESS
