@@ -65,7 +65,8 @@ if [[ "$USER_NAME" == "null" ]]; then
 fi
 USER_NAME="${USER_NAME} (Rebase PR Action)"
 
-USER_EMAIL=$(echo "$user_resp" | jq -r ".email")
+USER_EMAIL="$(echo "$user_resp" | jq -r ".email")"
+
 if [[ "$USER_EMAIL" == "null" ]]; then
 	USER_EMAIL="$USER_LOGIN@users.noreply.github.com"
 fi
