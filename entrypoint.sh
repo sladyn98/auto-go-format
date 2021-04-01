@@ -2,20 +2,48 @@
 
 set -e
 
-PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-echo "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
+# SELF represents the user visible name of the action.
+SELF="auto-go-format"
+
+# GOFMT represents the command to run to format files. The
+# given file is substituted for the literal "{FILE}".
+GOFMT="go fmt {FILE}"
+
+# log outputs its arguments to the action run log.
+log() {
+	echo "::set-output name=${SELF}::$*"
+}
+
+# err outputs an error message to the action run log.
+err() {
+	echo "::warning::$*"
+}
+
+# die outputs a fatal error message to the action run log.
+die() {
+	echo "::error::$*"
+}
+
+# fmt recieves a file as $1 and formates it in place.
+fmt() {
+	echo "::group::formatting '$1'"
+	echo "${GOFMT}" | sed "s/{FILE}/$1/g" | sh
+	echo "::endgroup::"
+}
 
 if [[ -z "$GITHUB_TOKEN" ]]; then
-	echo "Set the GITHUB_TOKEN env variable."
-	exit 1
+	die "Set the GITHUB_TOKEN env variable."
 fi
 
-URI=https://api.github.com
+PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+
+log "Collecting information about PR #$PR_NUMBER of $GITHUB_REPOSITORY..."
+
+URI="https://api.github.com"
 API_HEADER="Accept: application/vnd.github.v3+json"
 AUTH_HEADER="Authorization: token $GITHUB_TOKEN"
 
-pr_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
-          "${URI}/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+pr_resp="$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
 
 BASE_REPO="$(echo "$pr_resp" | jq -r .base.repo.full_name)"
 BASE_BRANCH="$(echo "$pr_resp" | jq -r .base.ref)"
@@ -45,7 +73,7 @@ fi
 HEAD_REPO="$(echo "$pr_resp" | jq -r .head.repo.full_name)"
 HEAD_BRANCH="$(echo "$pr_resp" | jq -r .head.ref)"
 
-echo "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
+log "Base branch for PR #$PR_NUMBER is $BASE_BRANCH"
 
 USER_TOKEN=${USER_LOGIN}_TOKEN
 COMMITTER_TOKEN=${!USER_TOKEN:-$GITHUB_TOKEN}
@@ -75,7 +103,7 @@ declare -i ZERO=0
 for FILE in $FILES; do
     if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
         count=$((count+1))
-        go fmt "${FILE}"
+        fmt "${FILE}"
     fi
 done
 
@@ -84,7 +112,7 @@ if [[ $count -eq $ZERO ]]; then
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
     if [[ "COMMENTS_URL" != null ]]; then
-        echo "Not file need format"
+        log "Not file need format"
     	# Pause invalid tips
     	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
@@ -108,7 +136,7 @@ else
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
     if [[ "COMMENTS_URL" != null ]]; then
-    	echo "Not file need format"
+    	log "Not file need format"
     	# Pause invalid tips
     	#curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
     fi
