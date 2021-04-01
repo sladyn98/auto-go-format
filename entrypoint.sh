@@ -42,7 +42,7 @@ get() {
 # data API response.
 parse_user() {
 	USER_NAME="$(echo "$1" | jq -r ".name")"
-	
+
 	# TODO: if USER_NAME is null something has
 	# already gone wrong.
 	if [[ "$USER_NAME" == "null" ]]; then
@@ -134,9 +134,9 @@ git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
 if [[ $(git branch | grep $HEAD_BRANCH) ]]; then
-    git checkout $HEAD_BRANCH
+	git checkout $HEAD_BRANCH
 else
-    git checkout -b $HEAD_BRANCH
+	git checkout -b $HEAD_BRANCH
 fi
 
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
@@ -145,10 +145,10 @@ declare -i count=0
 declare -i ZERO=0
 
 for FILE in $FILES; do
-    if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
-        count=$((count+1))
-        fmt "${FILE}"
-    fi
+	if [[ "${FILE##*.}" = "go" && -f $FILE ]]; then
+		count=$((count+1))
+		fmt "${FILE}"
+	fi
 done
 
 if [[ $count -eq $ZERO ]]; then
