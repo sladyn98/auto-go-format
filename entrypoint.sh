@@ -22,6 +22,15 @@ err() {
 # die outputs a fatal error message to the action run log.
 die() {
 	echo "::error::$*"
+
+	if [ "$PULL_DATA" ]
+	then
+		echo "::group::API response"
+		echo "${PULL_DATA}"
+		echo "::endgroup::"
+	fi
+
+	exit 1
 }
 
 # fmt recieves a file as $1 and formats it in place.
@@ -112,9 +121,7 @@ BASE_REPO="$(echo "$PULL_DATA" | jq -r .base.repo.full_name)"
 BASE_BRANCH="$(echo "$PULL_DATA" | jq -r .base.ref)"
 
 if [[ -z "$BASE_BRANCH" ]]; then
-	echo "Cannot get base branch information for PR #$PR_NUMBER!"
-	echo "API response: $PULL_DATA"
-	exit 1
+	die "Cannot get base branch information for PR #$PR_NUMBER!"
 fi
 
 USER_LOGIN="$(jq -r ".pull_request.user.login" "$GITHUB_EVENT_PATH")"
