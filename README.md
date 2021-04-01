@@ -16,11 +16,11 @@ jobs:
     name: Golang Formatter
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
       with:
         fetch-depth: 0
     - name: Golang Formatter
-      uses: dingdayu/auto-go-format@master
+      uses: dingdayu/auto-go-format@main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
