@@ -70,7 +70,7 @@ declare -i ZERO=0
 for FILE in $FILES; do
 if [ "${FILE##*.}" = "go" ]; then
 count=$((count+1))
-gofmt -w "${FILE}"
+gofumpt -w "${FILE}"
 fi
 done
 
