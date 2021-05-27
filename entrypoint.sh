@@ -26,11 +26,9 @@ if [[ -z "$BASE_BRANCH" ]]; then
 	exit 1
 fi
 
-USER_LOGIN=$(jq -r ".comment.user.login" "$GITHUB_EVENT_PATH")
-
+USER_LOGIN=$GITHUB_ACTOR
 user_resp=$(curl -X GET -s -H "${AUTH_HEADER}" -H "${API_HEADER}" \
             "${URI}/users/${USER_LOGIN}")
-
 USER_NAME=$(echo "$user_resp" | jq -r ".name")
 if [[ "$USER_NAME" == "null" ]]; then
 	USER_NAME=$USER_LOGIN
@@ -58,9 +56,8 @@ git remote add fork https://x-access-token:$COMMITTER_TOKEN@github.com/$HEAD_REP
 
 set -o xtrace
 
-# make sure branches are up-to-date
-git fetch origin $BASE_BRANCH
-git fetch fork $HEAD_BRANCH
+git checkout $HEAD_BRANCH
+git fetch
 
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
 FILES=$(curl -s -X GET -H "${AUTH_HEADER}" -H "${API_HEADER}" -G $URL | jq -r '.[] | .filename')
@@ -74,22 +71,12 @@ gofumpt -w "${FILE}"
 fi
 done
 
-if [[ $count -eq $ZERO ]]; then
-    COMMENT="You do not have any go files to format"
-    PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
-    COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
-    if [ "COMMENTS_URL" != null ]; then
-    curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
-    fi
-    exit $SUCCESS
-fi
-
 # Post results back as comment.
 if [[ `git status --porcelain` ]]; then
     git status
     git add .
     git commit -m "Formatting files"
-    git push -f fork $HEAD_BRANCH
+    git push origin $HEAD_BRANCH
     COMMENT=":rocket: Your go files have been formatted successfully"
     PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
     COMMENTS_URL=$(cat /github/workflow/event.json | jq -r .pull_request.comments_url)
