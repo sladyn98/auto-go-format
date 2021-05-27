@@ -63,7 +63,7 @@ git fetch origin $BASE_BRANCH
 git fetch fork $HEAD_BRANCH
 
 URL="https://api.github.com/repos/${BASE_REPO}/pulls/${PR_NUMBER}/files"
-FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
+FILES=$(curl -s -X GET -H "${AUTH_HEADER}" -H "${API_HEADER}" -G $URL | jq -r '.[] | .filename')
 declare -i count=0
 declare -i ZERO=0
 
