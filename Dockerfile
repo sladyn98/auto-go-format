@@ -10,7 +10,7 @@ LABEL "com.github.actions.icon"="git-pull-request"
 LABEL "com.github.actions.color"="blue"
 
 RUN apk --no-cache add jq bash curl git git-lfs
-RUN GO111MODULE=on go get mvdan.cc/gofumpt
+RUN GO111MODULE=on go install mvdan.cc/gofumpt
 ADD entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
